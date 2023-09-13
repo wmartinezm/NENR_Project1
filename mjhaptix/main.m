@@ -29,6 +29,22 @@ tdata=[0];
 tcontrol=[];
 pause(0.5)
 tic
+%% %%%%%%%%%%%%%%%%%%%%%%% START OF YOUR CODE %%%%%%%%%%%%%%%%%%%%%%%%%%
+csv_filename = 'raw_emg_rh.csv';        % Specify the desired filename
+file_open = fopen(csv_filename, 'a');   % Create a file for writing in append mode
+header_written = false;                 % Track if the CSV header has been written
+windowSize = 88;        % Set the window size for the moving average
+baselineSize = 3000;    % Samples to get the baseline value.
+baselineflag = 0;       % Flag to process baseline just once.
+baselineRMS = 0;
+baselineSTD = 0;
+epochSize = 10000;      % Epoch window size.
+frequencyFlag = 0;
+Fs = 1000;
+Fn = Fs/2;
+fco = 30;
+L = 10000;
+%% %%%%%%%%%%%%%%%%%%%%%%% END OF YOUR CODE %%%%%%%%%%%%%%%%%%%%%%%%%%
 while(ishandle(fig)) %run until figure closes
     % SAMPLE ARDUINO
     try
@@ -51,32 +67,48 @@ while(ishandle(fig)) %run until figure closes
         try
 
             %% %%%%%%%%%%%%%%%%%%%%%%% START OF YOUR CODE %%%%%%%%%%%%%%%%%%%%%%%%%%
-            windowSize = 88;  % Set the window size for the moving average
-            Fs = 1000;
-            Fn = Fs/2;
-            fco = 20;
+            % Write the header to the CSV file (once)
+            if ~header_written
+                fprintf(file_open, 'Time,RawData, ControlData\n');
+                header_written = true;
+            end
             % Check if there are at least 20 samples in 'data'
             if length(data) >= windowSize
-                % Calculate the moving average of the absolute values of the last 20 samples
-                %movingAvg = mean(abs(data(1, (dataindex - 1) - (windowSize - 1):dataindex -1)));
+                if ((dataindex >= baselineSize) && (baselineflag == 0)) % only gets here once
+                    baselineData = zeros(length(data), 1); % Pre-allocate array to get the baseline data.
+                    baselineData = data(1, 1:dataindex -1); % Get the current data
+                    baselineRMS = rms(baselineData);
+%                     baselineSTD = std(baselineData);
+%                     baselineRMS
+%                     baselineSTD
+                    baselineflag = 1;
+                end
                 dataWindow = data(1, (dataindex - 1) - (windowSize - 1):dataindex -1);
                 movingAvg = abs(dataWindow - mean(dataWindow));
                 [b,a] = butter(2,fco * 1.25/Fn);
-                z = filtfilt(b, a, movingAvg);
-                movingAvg2 = mean(z);
+                linear_envelope = filtfilt(b, a, movingAvg);
+                final_value = mean(linear_envelope);
 
-                myControlValue = movingAvg2;
+%                 myControlValue = final_value;
+                
                 % Check if 'movingAvg' is less than 0.3
-%                 if movingAvg2 < 0.3
-%                     myControlValue = 0; % Open hand
-%                 else
-%                     myControlValue = 1;% Close hand
-%                 end
+                if (baselineflag == 0)
+                    myControlValue = 0; % Open hand
+                elseif ((final_value <= baselineRMS) && (baselineflag == 1))
+                    myControlValue = 0; % Open hand
+                elseif (final_value * 5 > 0.6)
+                    myControlValue = 1; 
+                else
+                    myControlValue = final_value * 5;% Close hand
+                end
             else
                 % Handle the case where there are not enough samples
                 disp('Not enough samples in ''data'' to calculate moving average.');
             end
-
+            time_stamp = (1:(newsamps)/Fs);
+            for i = 1:newsamps
+                fprintf(file_open, '%f,%f,%f\n', time_stamp(i), data((dataindex - newsamps) + i));
+            end
             %myControlValue = data(1,dataindex-1); %set the control value to the most recent value of the EMG data. REPLACE THIS LINE
 
             %% %%%%%%%%%%%%%%%%%%%%%%%% END OF YOUR CODE %%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -104,6 +136,7 @@ end
 data = data(~isnan(data)); %data is initialized and space is allocated as NaNs. Remove those if necessary.
 control = control(~isnan(control)); %data is initialized and space is allocated as NaNs. Remove those if necessary.
 finalPlot(data,control,tdata,tcontrol) %plot data and control with their respective timestamps
+fclose(file_open);  % Close the CSV file when finished
 
 %% Section 6: Close the arduino serial connection before closing MATLAB
 uno.close;
