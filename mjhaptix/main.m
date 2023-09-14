@@ -6,6 +6,21 @@ catch
 end
 clear all; clc; %clear all matlab variables and clear the workspace display
 
+%% %%%%%%%%%%%%%%%%%%%%%%% START OF YOUR CODE %%%%%%%%%%%%%%%%%%%%%%%%%%
+base_filename = 'EmgData';              % Specify the desired filename
+suffix = 0;                             % Initialize a file name suffix counter
+csv_filename = [base_filename, '_', num2str(suffix), '.csv'];    % Generate the full file name with the suffix
+files= dir(fullfile(pwd, '*.csv'));
+% Check if the file with the generated name already exists
+for i = 1:numel(files)
+    fileName = files(i).name;
+    if any(isstrprop(fileName, 'digit'))
+        % Increment the suffix and generate a new file name
+        suffix = suffix + 1;
+        csv_filename = [base_filename, '_', num2str(suffix), '.csv'];
+    end
+end
+%% %%%%%%%%%%%%%%%%%%%%%%% END OF YOUR CODE %%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Section 2: Set Up Virtual Environment (MuJoCo)
 % You should have MuJoCo open with a model loaded and running before
@@ -30,7 +45,20 @@ tcontrol=[];
 pause(0.5)
 tic
 %% %%%%%%%%%%%%%%%%%%%%%%% START OF YOUR CODE %%%%%%%%%%%%%%%%%%%%%%%%%%
-csv_filename = 'raw_emg_rh.csv';        % Specify the desired filename
+base_filename = 'EmgData';        % Specify the desired filename
+suffix = 0;                             % Initialize a file name suffix counter
+csv_filename = [base_filename, '_', num2str(suffix), '.csv'];    % Generate the full file name with the suffix
+files= dir(fullfile(pwd, '*.csv'));
+% Check if the file with the generated name already exists
+% while exist(csv_filename, 'file') == suffix
+for i = 1:numel(files)
+    fileName = files(i).name;
+    if any(isstrprop(fileName, 'digit'))
+        % Increment the suffix and generate a new file name
+        suffix = suffix + 1;
+        csv_filename = [base_filename, '_', num2str(suffix), '.csv'];
+    end
+end
 file_open = fopen(csv_filename, 'a');   % Create a file for writing in append mode
 header_written = false;                 % Track if the CSV header has been written
 windowSize = 88;        % Set the window size for the moving average
@@ -44,6 +72,11 @@ Fs = 1000;
 Fn = Fs/2;
 fco = 30;
 L = 10000;
+% Write the header to the CSV file (once)
+if ~header_written
+    fprintf(file_open, 'Time,RawData, ControlData\n');
+    header_written = true;
+end
 %% %%%%%%%%%%%%%%%%%%%%%%% END OF YOUR CODE %%%%%%%%%%%%%%%%%%%%%%%%%%
 while(ishandle(fig)) %run until figure closes
     % SAMPLE ARDUINO
@@ -67,13 +100,8 @@ while(ishandle(fig)) %run until figure closes
         try
 
             %% %%%%%%%%%%%%%%%%%%%%%%% START OF YOUR CODE %%%%%%%%%%%%%%%%%%%%%%%%%%
-            % Write the header to the CSV file (once)
-            if ~header_written
-                fprintf(file_open, 'Time,RawData, ControlData\n');
-                header_written = true;
-            end
             % Check if there are at least 20 samples in 'data'
-            if length(data) >= windowSize
+             if dataindex >= windowSize
                 if ((dataindex >= baselineSize) && (baselineflag == 0)) % only gets here once
                     baselineData = zeros(length(data), 1); % Pre-allocate array to get the baseline data.
                     baselineData = data(1, 1:dataindex -1); % Get the current data
@@ -90,26 +118,21 @@ while(ishandle(fig)) %run until figure closes
                 final_value = mean(linear_envelope);
 
 %                 myControlValue = final_value;
-                
+
                 % Check if 'movingAvg' is less than 0.3
-                if (baselineflag == 0)
-                    myControlValue = 0; % Open hand
-                elseif ((final_value <= baselineRMS) && (baselineflag == 1))
-                    myControlValue = 0; % Open hand
-                elseif (final_value * 5 > 0.6)
-                    myControlValue = 1; 
-                else
+                % if (baselineflag == 0)
+                %     myControlValue = 0; % Open hand
+                % elseif ((final_value <= baselineRMS) && (baselineflag == 1))
+                %     myControlValue = 0; % Open hand
+                % elseif (final_value * 5 > 0.6)
+                %     myControlValue = 1; 
+                % else
                     myControlValue = final_value * 5;% Close hand
-                end
+                % end
             else
                 % Handle the case where there are not enough samples
-                disp('Not enough samples in ''data'' to calculate moving average.');
-            end
-            time_stamp = (1:(newsamps)/Fs);
-            for i = 1:newsamps
-                fprintf(file_open, '%f,%f,%f\n', time_stamp(i), data((dataindex - newsamps) + i));
-            end
-            %myControlValue = data(1,dataindex-1); %set the control value to the most recent value of the EMG data. REPLACE THIS LINE
+                myControlValue = data(1,dataindex-1); %set the control value to the most recent value of the EMG data.
+             end
 
             %% %%%%%%%%%%%%%%%%%%%%%%%% END OF YOUR CODE %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -133,10 +156,19 @@ while(ishandle(fig)) %run until figure closes
     end
 end
 %% Section 5: Plot the data and control values from the most recent time running the system
+% time_stamp = (1:(length(data))/Fs);
+time_stamp = length(tdata);
+for i = 1:(time_stamp -1)
+    if time_stamp > 16000
+        break;
+    end
+    % fprintf(file_open, '%f,%f,%f\n', time_stamp(i), data(i), control(i));
+    fprintf(file_open, '%f,%f,%f\n', tdata(i), data(i), control(i));
+end
+fclose(file_open);  % Close the CSV file when finished
 data = data(~isnan(data)); %data is initialized and space is allocated as NaNs. Remove those if necessary.
 control = control(~isnan(control)); %data is initialized and space is allocated as NaNs. Remove those if necessary.
 finalPlot(data,control,tdata,tcontrol) %plot data and control with their respective timestamps
-fclose(file_open);  % Close the CSV file when finished
 
 %% Section 6: Close the arduino serial connection before closing MATLAB
 uno.close;
