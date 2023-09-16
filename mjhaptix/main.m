@@ -72,6 +72,40 @@ Fs = 1000;
 Fn = Fs/2;
 fco = 30;
 L = 10000;
+%+++++ Create a time-frequency plot that updates in real-time
+% figure;
+% h = imagesc([], [], []);
+% axis xy; % Flip the y-axis
+% colormap('jet');
+% xlabel('Time (s)');
+% ylabel('Frequency (Hz)');
+% title('Real-Time Continuous Wavelet Transform of EMG Signal');
+% colorbar;
+% wavelet_name = 'cmor3-3'; % Wavelet type and parameters (adjust as needed)
+% scales = 1:100; % Range of scales to analyze
+% % Create a buffer to store incoming data
+% buffer_size = 2 * Fs; % Adjust the buffer size as needed
+% buffer_idx = 1;
+% emg_buffer = zeros(1, buffer_size);
+% Initialize parameters
+Fs = 1000; % Sampling frequency (Hz)
+wavelet_name = 'db4'; % Wavelet type (e.g., Daubechies 4)
+level = 5; % Decomposition level (adjust as needed)
+threshold = 's'; % Thresholding method ('soft' or 'hard')
+threshold_multiplier = 3; % Threshold multiplier (adjust as needed)
+
+% Initialize a buffer to store incoming EMG data
+buffer_size = 2 * Fs; % Adjust the buffer size as needed
+emg_buffer = zeros(1, buffer_size);
+buffer_idx = 1;
+
+% Create a figure for real-time plotting
+figure;
+h1 = subplot(2, 1, 1);
+h2 = subplot(2, 1, 2);
+title(h1, 'Original EMG Signal');
+title(h2, 'Denoised EMG Signal');
+%++++++
 % Write the header to the CSV file (once)
 if ~header_written
     fprintf(file_open, 'Time,RawData, ControlData\n');
@@ -113,6 +147,58 @@ while(ishandle(fig)) %run until figure closes
                     baselineflag = 1;
                 end
                 dataWindow = data(1, (dataindex - 1) - (windowSize - 1):dataindex -1);
+                %++++++++
+                emg_data = data(1, (dataindex - 1) - (windowSize - 1):dataindex -1);
+                %  % Update the buffer with new data
+                % if buffer_idx > buffer_size
+                %     emg_buffer(1:end-1) = emg_buffer(2:end);
+                %     buffer_idx = buffer_size;
+                % end
+                % emg_buffer(:,buffer_idx:buffer_idx + windowSize -1) = emg_data(1,:); % Add new data point to the buffer
+                % buffer_idx = buffer_idx + windowSize;
+                % % Perform CWT on the data in the buffer
+                % [cwt_coefficients, frequencies] = cwt(emg_data, scales, wavelet_name, 'SamplingFrequency', Fs);
+                % 
+                % % Update the time-frequency plot
+                % set(h, 'XData', t, 'YData', frequencies, 'CData', abs(cwt_coefficients));
+                % drawnow; % Update the plot
+                if buffer_idx > buffer_size
+                    emg_buffer(1:end-1) = emg_buffer(2:end);
+                    buffer_idx = buffer_size;
+                end
+                emg_buffer(:,buffer_idx:buffer_idx + windowSize -1) = emg_data(1,:); % Add new data point to the buffer
+                % buffer_idx = buffer_idx + windowSize;
+
+                % Check if the buffer is full, then perform denoising
+                if buffer_idx == buffer_size
+                    % Perform wavelet decomposition
+                    [C, L] = wavedec(emg_buffer, level, wavelet_name);
+                    
+                    % Estimate the noise standard deviation (assuming Gaussian noise)
+                    % using the median absolute deviation (MAD)
+                    mad_estimation = mad(C, 1) / 0.6745;
+                    
+                    % Apply soft or hard thresholding to remove noise
+                    threshold_value = threshold_multiplier * mad_estimation;
+                    try
+                        % Apply soft or hard thresholding to remove noise
+                        C_thresholded = wthresh(C, threshold, threshold_value);
+                    
+                        % Reconstruct the denoised signal
+                        denoised_signal = waverec(C_thresholded, L, wavelet_name);
+                        
+                        % Plot the original and denoised signals in real-time
+                        plot(h1, emg_buffer);
+                        plot(h2, denoised_signal);
+                        drawnow;
+                    catch exception
+                        % Handle any errors that may occur during the thresholding or reconstruction
+                        disp('Error occurred during thresholding or reconstruction:');
+                        disp(exception.message);
+                    end
+                end
+                buffer_idx = buffer_idx + windowSize;
+                %++++++++
                 movingAvg = abs(dataWindow - mean(dataWindow));
                 [b,a] = butter(2,fco * 1.25/Fn);
                 linear_envelope = filtfilt(b, a, movingAvg);
