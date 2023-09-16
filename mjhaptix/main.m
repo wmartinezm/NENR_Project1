@@ -121,15 +121,15 @@ while(ishandle(fig)) %run until figure closes
 %                 myControlValue = final_value;
 
                 % Check if 'movingAvg' is less than 0.3
-                % if (baselineflag == 0)
-                %     myControlValue = 0; % Open hand
-                % elseif ((final_value <= baselineRMS) && (baselineflag == 1))
-                %     myControlValue = 0; % Open hand
-                % elseif (final_value * 5 > 0.6)
-                %     myControlValue = 1; 
-                % else
+                if (baselineflag == 0)
+                    myControlValue = 0; % Open hand
+                elseif ((final_value <= baselineRMS) && (baselineflag == 1))
+                    myControlValue = 0; % Open hand
+                elseif (final_value * 5 > 0.6)
+                    myControlValue = 1; 
+                else
                     myControlValue = final_value * 12;% Close hand
-                % end
+                end
             else
                 % Handle the case where there are not enough samples
                 myControlValue = data(1,dataindex-1); %set the control value to the most recent value of the EMG data.
