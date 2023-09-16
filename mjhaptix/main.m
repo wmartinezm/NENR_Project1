@@ -62,7 +62,7 @@ end
 file_open = fopen(csv_filename, 'a');   % Create a file for writing in append mode
 header_written = false;                 % Track if the CSV header has been written
 windowSize = 88;        % Set the window size for the moving average
-baselineSize = 3000;    % Samples to get the baseline value.
+baselineSize = 1000;    % Samples to get the baseline value.
 baselineflag = 0;       % Flag to process baseline just once.
 baselineRMS = 0;
 baselineSTD = 0;
@@ -101,6 +101,7 @@ while(ishandle(fig)) %run until figure closes
 
             %% %%%%%%%%%%%%%%%%%%%%%%% START OF YOUR CODE %%%%%%%%%%%%%%%%%%%%%%%%%%
             % Check if there are at least 20 samples in 'data'
+            myControlValue = 0;
              if dataindex >= windowSize
                 if ((dataindex >= baselineSize) && (baselineflag == 0)) % only gets here once
                     baselineData = zeros(length(data), 1); % Pre-allocate array to get the baseline data.
@@ -127,7 +128,7 @@ while(ishandle(fig)) %run until figure closes
                 % elseif (final_value * 5 > 0.6)
                 %     myControlValue = 1; 
                 % else
-                    myControlValue = final_value * 5;% Close hand
+                    myControlValue = final_value * 12;% Close hand
                 % end
             else
                 % Handle the case where there are not enough samples
