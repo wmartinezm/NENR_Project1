@@ -135,8 +135,7 @@ while(ishandle(fig)) %run until figure closes
                     myControlValue = final_value * 12;% Close hand
                 end
             else
-                % If baseline noise has not been calculated always set the
-                % control value to 0;
+                % If baseline noise has no
                 myControlValue = 0;
             end
 
