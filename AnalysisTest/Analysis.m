@@ -111,3 +111,15 @@ hold off;
 figure_description = sprintf('This figure compares the Signal-to-Noise Ratio (SNR) between electrodes for two participants. The extensor and flexor muscles of both participants are considered. Wilcoxon signed-rank tests were performed to assess the significance of differences. The red text "Significant" indicates a significant difference at a significance level of 0.05.');
 disp(figure_description);
 
+% Load your data into a table
+% Example:
+dataTable = readtable('Algorithms.csv');
+
+% Fit a repeated-measures model
+rm = fitrm(dataTable, 'Result ~ Algorithm*ElectrodeLocation*Participant');
+
+% Perform the two-way ANOVA
+anovaResults = ranova(rm);
+
+% Display the results
+disp(anovaResults)
