@@ -141,33 +141,18 @@ while(ishandle(fig)) %run until figure closes
                     baselineData = zeros(length(data), 1); % Pre-allocate array to get the baseline data.
                     baselineData = data(1, 1:dataindex -1); % Get the current data
                     baselineRMS = rms(baselineData);
-%                     baselineSTD = std(baselineData);
-%                     baselineRMS
-%                     baselineSTD
+                    baselineSTD = std(baselineData);
                     baselineflag = 1;
                 end
                 dataWindow = data(1, (dataindex - 1) - (windowSize - 1):dataindex -1);
                 %++++++++
                 emg_data = data(1, (dataindex - 1) - (windowSize - 1):dataindex -1);
-                %  % Update the buffer with new data
-                % if buffer_idx > buffer_size
-                %     emg_buffer(1:end-1) = emg_buffer(2:end);
-                %     buffer_idx = buffer_size;
-                % end
-                % emg_buffer(:,buffer_idx:buffer_idx + windowSize -1) = emg_data(1,:); % Add new data point to the buffer
-                % buffer_idx = buffer_idx + windowSize;
-                % % Perform CWT on the data in the buffer
-                % [cwt_coefficients, frequencies] = cwt(emg_data, scales, wavelet_name, 'SamplingFrequency', Fs);
-                % 
-                % % Update the time-frequency plot
-                % set(h, 'XData', t, 'YData', frequencies, 'CData', abs(cwt_coefficients));
-                % drawnow; % Update the plot
+                % Update the buffer with new data
                 if buffer_idx > buffer_size
                     emg_buffer(1:end-1) = emg_buffer(2:end);
                     buffer_idx = buffer_size;
                 end
                 emg_buffer(:,buffer_idx:buffer_idx + windowSize -1) = emg_data(1,:); % Add new data point to the buffer
-                % buffer_idx = buffer_idx + windowSize;
 
                 % Check if the buffer is full, then perform denoising
                 if buffer_idx == buffer_size
@@ -204,9 +189,8 @@ while(ishandle(fig)) %run until figure closes
                 linear_envelope = filtfilt(b, a, movingAvg);
                 final_value = mean(linear_envelope);
 
-%                 myControlValue = final_value;
 
-                % Check if 'movingAvg' is less than 0.3
+                % Check if 'movingAvg' is less than baselineRMS noise
                 if (baselineflag == 0)
                     myControlValue = 0; % Open hand
                 elseif ((final_value <= baselineRMS) && (baselineflag == 1))
