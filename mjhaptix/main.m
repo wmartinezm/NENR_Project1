@@ -6,6 +6,21 @@ catch
 end
 clear all; clc; %clear all matlab variables and clear the workspace display
 
+%% %%%%%%%%%%%%%%%%%%%%%%% START OF YOUR CODE %%%%%%%%%%%%%%%%%%%%%%%%%%
+base_filename = 'EmgData';              % Specify the desired filename
+suffix = 0;                             % Initialize a file name suffix counter
+csv_filename = [base_filename, '_', num2str(suffix), '.csv'];    % Generate the full file name with the suffix
+files= dir(fullfile(pwd, '*.csv'));
+% Check if the file with the generated name already exists
+for i = 1:numel(files)
+    fileName = files(i).name;
+    if any(isstrprop(fileName, 'digit'))
+        % Increment the suffix and generate a new file name
+        suffix = suffix + 1;
+        csv_filename = [base_filename, '_', num2str(suffix), '.csv'];
+    end
+end
+%% %%%%%%%%%%%%%%%%%%%%%%% END OF YOUR CODE %%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Section 2: Set Up Virtual Environment (MuJoCo)
 % You should have MuJoCo open with a model loaded and running before
@@ -29,6 +44,41 @@ tdata=[0];
 tcontrol=[];
 pause(0.5)
 tic
+%% %%%%%%%%%%%%%%%%%%%%%%% START OF YOUR CODE %%%%%%%%%%%%%%%%%%%%%%%%%%
+base_filename = 'EmgData';        % Specify the desired filename
+suffix = 0;                             % Initialize a file name suffix counter
+csv_filename = [base_filename, '_', num2str(suffix), '.csv'];    % Generate the full file name with the suffix
+files= dir(fullfile(pwd, '*.csv'));
+% Check if the file with the generated name already exists
+% while exist(csv_filename, 'file') == suffix
+for i = 1:numel(files)
+    fileName = files(i).name;
+    if any(isstrprop(fileName, 'digit'))
+        % Increment the suffix and generate a new file name
+        suffix = suffix + 1;
+        csv_filename = [base_filename, '_', num2str(suffix), '.csv'];
+    end
+end
+file_open = fopen(csv_filename, 'a');   % Create a file for writing in append mode
+header_written = false;                 % Track if the CSV header has been written
+windowSize = 88;        % Set the window size for the moving average
+baselineSize = 1000;    % Samples to get the baseline value.
+baselineflag = 0;       % Flag to process baseline just once.
+baselineRMS = 0;
+baselineSTD = 0;
+threshold = 0;
+epochSize = 10000;      % Epoch window size.
+frequencyFlag = 0;
+Fs = 1000;
+Fn = Fs/2;
+fco = 30;
+L = 10000;
+% Write the header to the CSV file (once)
+if ~header_written
+    fprintf(file_open, 'Time,RawData, ControlData\n');
+    header_written = true;
+end
+%% %%%%%%%%%%%%%%%%%%%%%%% END OF YOUR CODE %%%%%%%%%%%%%%%%%%%%%%%%%%
 while(ishandle(fig)) %run until figure closes
     % SAMPLE ARDUINO
     try
@@ -51,33 +101,44 @@ while(ishandle(fig)) %run until figure closes
         try
 
             %% %%%%%%%%%%%%%%%%%%%%%%% START OF YOUR CODE %%%%%%%%%%%%%%%%%%%%%%%%%%
-            windowSize = 88;  % Set the window size for the moving average
-            Fs = 1000;
-            Fn = Fs/2;
-            fco = 20;
-            % Check if there are at least 20 samples in 'data'
-            if length(data) >= windowSize
-                % Calculate the moving average of the absolute values of the last 20 samples
-                %movingAvg = mean(abs(data(1, (dataindex - 1) - (windowSize - 1):dataindex -1)));
+            % Check if there are at least 88 samples in 'data'
+            myControlValue = 0;
+             if dataindex >= windowSize
+                if ((dataindex >= baselineSize) && (baselineflag == 0)) % only gets here once
+                    baselineData = zeros(length(data), 1); % Pre-allocate array to get the baseline data.
+                    baselineData = data(1, 1:dataindex -1); % Get the current data
+                    baselineRMS = rms(baselineData);
+                    baselineSTD = std(baselineData);
+                    threshold = baselineRMS + baselineSTD;
+                    baselineflag = 1;
+                end
+                % Get the data window.
                 dataWindow = data(1, (dataindex - 1) - (windowSize - 1):dataindex -1);
-                movingAvg = abs(dataWindow - mean(dataWindow));
+                % Signal rectiifcation
+                movingAvg = abs(dataWindow - mean(dataWindow)); 
+                % Create a low pass filter
                 [b,a] = butter(2,fco * 1.25/Fn);
-                z = filtfilt(b, a, movingAvg);
-                movingAvg2 = mean(z);
+                linear_envelope = filtfilt(b, a, movingAvg);
+                final_value = mean(linear_envelope);
 
-                myControlValue = movingAvg2;
-                % Check if 'movingAvg' is less than 0.3
-%                 if movingAvg2 < 0.3
-%                     myControlValue = 0; % Open hand
-%                 else
-%                     myControlValue = 1;% Close hand
-%                 end
+%                 myControlValue = final_value;
+
+                % Check if final_value > 'threshold' to detect muscle
+                % activation
+                if (baselineflag == 0)
+                    myControlValue = 0; % Open hand
+                elseif ((final_value <= threshold) && (baselineflag == 1))
+                    myControlValue = 0; % Open hand
+                elseif (final_value * 12 > 1.0)
+                    myControlValue = 1; 
+                else
+                    myControlValue = final_value * 12;% Close hand
+                end
             else
-                % Handle the case where there are not enough samples
-                disp('Not enough samples in ''data'' to calculate moving average.');
+                % If baseline noise has not been calculated always set the
+                % control value to 0;
+                myControlValue = 0;
             end
-
-            %myControlValue = data(1,dataindex-1); %set the control value to the most recent value of the EMG data. REPLACE THIS LINE
 
             %% %%%%%%%%%%%%%%%%%%%%%%%% END OF YOUR CODE %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -101,6 +162,16 @@ while(ishandle(fig)) %run until figure closes
     end
 end
 %% Section 5: Plot the data and control values from the most recent time running the system
+% time_stamp = (1:(length(data))/Fs);
+time_stamp = length(tdata);
+for i = 1:(time_stamp -1)
+    if time_stamp > 16000
+        break;
+    end
+    % fprintf(file_open, '%f,%f,%f\n', time_stamp(i), data(i), control(i));
+    fprintf(file_open, '%f,%f,%f\n', tdata(i), data(i), control(i));
+end
+fclose(file_open);  % Close the CSV file when finished
 data = data(~isnan(data)); %data is initialized and space is allocated as NaNs. Remove those if necessary.
 control = control(~isnan(control)); %data is initialized and space is allocated as NaNs. Remove those if necessary.
 finalPlot(data,control,tdata,tcontrol) %plot data and control with their respective timestamps
