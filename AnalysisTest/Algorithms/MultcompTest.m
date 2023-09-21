@@ -11,6 +11,9 @@ dataTable = readtable('Algorithms.csv');
 % Fit a repeated-measures model
 rm = fitrm(dataTable, 'Result');
 
+%Check if parameteric
+%kruskalwallis()
+
 % Perform the two-way ANOVA
 anovaResults = ranova(rm);
 

@@ -85,6 +85,14 @@ flexor_data = [participant1_flexor, participant2_flexor];
 % Perform a statistical test (Wilcoxon signed-rank test) for each pair of electrodes
 [p_value_extensor, ~] = signrank(participant1_extensor, participant2_extensor);
 [p_value_flexor, ~] = signrank(participant1_flexor, participant2_flexor);
+figure
+hold on
+histogram(extensor_data)
+hold off
+
+[p_value_flexVExt, ~] = signrank(flexor_data, extensor_data);
+
+[p_value_flexVExt, ~] = signrank(flexor_data, extensor_data);
 
 % Create a bar plot or box plot
 figure;
@@ -94,14 +102,14 @@ hold on;
 boxplot([extensor_data', flexor_data'], ...
     'Labels', {'Extensor', 'Flexor'});
 ylabel('SNR (dB)');
-title('0.01 Significance level');
+title('0.05 Significance level');
 
 % Add an indicator if there's a significant difference
-if p_value_extensor < 0.01 % Set your significance level here
+if p_value_extensor < 0.05 % Set your significance level here
     text(1, max(max(extensor_data, flexor_data)) + 1, 'Extensor: Significant', 'HorizontalAlignment', 'center', 'Color', 'r');
 end
 
-if p_value_flexor < 0.01 % Set your significance level here
+if p_value_flexor < 0.05 % Set your significance level here
     text(2, max(max(extensor_data, flexor_data)) + 1, 'Flexor: Significant', 'HorizontalAlignment', 'center', 'Color', 'r');
 end
 
