@@ -10,8 +10,59 @@ dataTable = readtable('Algorithms.csv');
 
 % Fit a repeated-measures model
 % aov = anova(dataTable,"Participant")
-aov = anova(dataTable,"Result")
+%aov = anova(dataTable,"Result")
 
+for i = 1:length(dataTable.ElectrodeLocation)
+    if dataTable.ElectrodeLocation == "Extensor"
+        dataTable.ElectrodeLocation(i) = 0;
+    end
+    if dataTable.ElectrodeLocation == "Flexor"
+        dataTable.ElectrodeLocation(i) = 1;
+    end
+end
+
+figure;
+hold on;
+
+noAov_Algorth = kruskalwallis(dataTable.Result)
+nonNormAov
+% Box plot (uncomment this section for a box plot)
+boxplot(dataTable.Result,dataTable.ElectrodeLocation);
+title("Electrode Location")
+hold off;
+figure;
+hold on;
+boxplot(dataTable.Result,dataTable.Participant);
+title("Participant 0=Amputee, 1=Healthly")
+hold off;
+figure;
+hold on;
+boxplot(dataTable.Result,dataTable.Algorithm);
+title("Algorithm 0=Amputee, 1=Healthly")
+% boxplot(dataTable.Result, ...
+%     'Labels', {'A1', 'A2'});
+% ylabel('SNR (dB)');
+% title('0.01 Significance level');
+
+% Add an indicator if there's a significant difference
+% if p_value_extensor < 0.01 % Set your significance level here
+%     text(1, max(max(extensor_data, flexor_data)) + 1, 'Extensor: Significant', 'HorizontalAlignment', 'center', 'Color', 'r');
+% end
+% 
+% if p_value_flexor < 0.01 % Set your significance level here
+%     text(2, max(max(extensor_data, flexor_data)) + 1, 'Flexor: Significant', 'HorizontalAlignment', 'center', 'Color', 'r');
+% end
+
+hold off;
+
+% signrank for results vs algorithm, location, Participants
+signrank_res_A = signrank(dataTable.Result, dataTable.Algorithm)
+
+signrank_res_P = signrank(dataTable.Result, dataTable.Participant)
+
+signrank_res_P = signrank(dataTable.Result, dataTable.Participant)
+
+%signrank_res_P = signrank(dataTable.Result, dataTable.Participant);
 % Display the results
 
 % m = multcompare(aov,["ElectrodeLocation","Algorithm"])
