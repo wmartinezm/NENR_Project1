@@ -1,4 +1,6 @@
 
+clear, clc, close all
+
 % Get the current directory
 current_directory = pwd;
 
@@ -11,7 +13,7 @@ dataTable = readtable('Algorithms.csv');
 % Fit a repeated-measures model
 % aov = anova(dataTable,"Participant")
 %aov = anova(dataTable,"Result")
-
+% 
 for i = 1:length(dataTable.ElectrodeLocation)
     if dataTable.ElectrodeLocation == "Extensor"
         dataTable.ElectrodeLocation(i) = 0;
@@ -21,24 +23,32 @@ for i = 1:length(dataTable.ElectrodeLocation)
     end
 end
 
+
+
 figure;
 hold on;
 
-noAov_Algorth = kruskalwallis(dataTable.Result)
-nonNormAov
+% noAov_Algorth = kruskalwallis(dataTable.Result)
+% nonNormAov
 % Box plot (uncomment this section for a box plot)
 boxplot(dataTable.Result,dataTable.ElectrodeLocation);
-title("Electrode Location")
+title("Electrode Location vs Success")
+ylabel("0 is failure and 1 is success")
+xlabel("Electrode Location 0=Extensor, 1=Flexor")
 hold off;
 figure;
 hold on;
 boxplot(dataTable.Result,dataTable.Participant);
-title("Participant 0=Amputee, 1=Healthly")
+title("Particpant vs success")
+ylabel("0 is failure and 1 is success")
+xlabel("Participant 0=Amputee, 1=Healthly")
 hold off;
 figure;
 hold on;
 boxplot(dataTable.Result,dataTable.Algorithm);
-title("Algorithm 0=Amputee, 1=Healthly")
+title("Algorithm vs success")
+ylabel("0 is failure and 1 is success")
+xlabel("Algorithm 0=muscele threshold control, 1=wavelet noise control")
 % boxplot(dataTable.Result, ...
 %     'Labels', {'A1', 'A2'});
 % ylabel('SNR (dB)');
@@ -62,6 +72,10 @@ signrank_res_P = signrank(dataTable.Result, dataTable.Participant)
 
 signrank_res_P = signrank(dataTable.Result, dataTable.Participant)
 
+% figure;
+% hold on;
+% boxplot(signrank_res_P)
+% hold off;
 %signrank_res_P = signrank(dataTable.Result, dataTable.Participant);
 % Display the results
 
