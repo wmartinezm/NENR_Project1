@@ -39,7 +39,7 @@ hold off;
 figure;
 hold on;
 boxplot(dataTable.Result,dataTable.Participant);
-title("Particpant vs success")
+title("Particpant disability ranking vs success")
 ylabel("0 is failure and 1 is success")
 xlabel("Participant 0=Amputee, 1=Healthly")
 hold off;
@@ -66,11 +66,11 @@ xlabel("Algorithm 0=muscele threshold control, 1=wavelet noise control")
 hold off;
 
 % signrank for results vs algorithm, location, Participants
+%signrank_res_E = signrank(dataTable.Result, dataTable.ElectrodeLocation)
+
+signrank_res_P = signrank(dataTable.Result, dataTable.Participant)
+
 signrank_res_A = signrank(dataTable.Result, dataTable.Algorithm)
-
-signrank_res_P = signrank(dataTable.Result, dataTable.Participant)
-
-signrank_res_P = signrank(dataTable.Result, dataTable.Participant)
 
 % figure;
 % hold on;
